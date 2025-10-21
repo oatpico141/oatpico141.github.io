@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เวชระเบียน - ระบบจัดการคลินิก</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🏥 ระบบจัดการคลินิก</h1>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html">📊 Dashboard</a></li>
+            <li><a href="patients.html">👥 ผู้ป่วย</a></li>
+            <li><a href="appointments.html">📅 นัดหมาย</a></li>
+            <li><a href="records.html" class="active">📋 เวชระเบียน</a></li>
+            <li><a href="billing.html">💰 เงิน/ใบเสร็จ</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>📋 เวชระเบียน</h2>
+            <button class="btn btn-primary" onclick="openAddRecordModal()">+ บันทึกการรักษาใหม่</button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>ค้นหาเวชระเบียน</h3>
+            </div>
+            <div class="card-body">
+                <div class="search-bar">
+                    <select id="searchPatient" class="form-input">
+                        <option value="">-- เลือกผู้ป่วย --</option>
+                    </select>
+                    <input type="date" id="searchDate" class="form-input" placeholder="วันที่">
+                    <button class="btn btn-secondary" onclick="clearSearch()">ล้าง</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>รายการเวชระเบียน</h3>
+                <span class="badge" id="recordCount">0 รายการ</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>วันที่</th>
+                                <th>เวลา</th>
+                                <th>HN</th>
+                                <th>ชื่อผู้ป่วย</th>
+                                <th>อาการ</th>
+                                <th>การวินิจฉัย</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordTableBody">
+                            <tr>
+                                <td colspan="7" class="empty-state">ไม่มีข้อมูลเวชระเบียน</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Record Modal -->
+    <div id="recordModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="modalTitle">บันทึกการรักษาใหม่</h3>
+                <span class="close" onclick="closeRecordModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="recordForm">
+                    <input type="hidden" id="recordId">
+
+                    <div class="form-group">
+                        <label>เลือกผู้ป่วย <span class="required">*</span></label>
+                        <select id="patientSelect" class="form-input" required onchange="updatePatientDetails()">
+                            <option value="">-- เลือกผู้ป่วย --</option>
+                        </select>
+                        <div id="patientDetails" class="patient-details"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>วันที่ <span class="required">*</span></label>
+                            <input type="date" id="recordDate" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label>เวลา <span class="required">*</span></label>
+                            <input type="time" id="recordTime" class="form-input" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>อาการสำคัญ / Chief Complaint <span class="required">*</span></label>
+                        <textarea id="chiefComplaint" class="form-input" rows="2" required placeholder="เช่น ปวดท้อง, ไข้สูง, ไอ"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>ประวัติปัจจุบัน / Present Illness</label>
+                        <textarea id="presentIllness" class="form-input" rows="3" placeholder="ระบุรายละเอียดอาการ"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>อุณหภูมิ (°C)</label>
+                            <input type="number" id="temperature" class="form-input" step="0.1" placeholder="36.5">
+                        </div>
+                        <div class="form-group">
+                            <label>ความดัน (mmHg)</label>
+                            <input type="text" id="bloodPressure" class="form-input" placeholder="120/80">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>ชีพจร (ครั้ง/นาที)</label>
+                            <input type="number" id="pulse" class="form-input" placeholder="72">
+                        </div>
+                        <div class="form-group">
+                            <label>น้ำหนัก (กก.)</label>
+                            <input type="number" id="weight" class="form-input" step="0.1" placeholder="65">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>การตรวจร่างกาย / Physical Examination</label>
+                        <textarea id="physicalExam" class="form-input" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>การวินิจฉัย / Diagnosis <span class="required">*</span></label>
+                        <textarea id="diagnosis" class="form-input" rows="2" required placeholder="เช่น Acute gastritis"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>การรักษา / Treatment</label>
+                        <textarea id="treatment" class="form-input" rows="3" placeholder="ระบุการรักษาและยาที่จ่าย"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>คำแนะนำและนัดหมายครั้งถัดไป</label>
+                        <textarea id="followUp" class="form-input" rows="2"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หมายเหตุ</label>
+                        <textarea id="recordNotes" class="form-input" rows="2"></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeRecordModal()">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Record Detail Modal -->
+    <div id="viewRecordModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>รายละเอียดเวชระเบียน</h3>
+                <span class="close" onclick="closeViewRecordModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="recordDetailContent"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeViewRecordModal()">ปิด</button>
+                    <button type="button" class="btn btn-primary" onclick="printRecord()">🖨️ พิมพ์</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let records = JSON.parse(localStorage.getItem('medicalRecords')) || [];
+        let patients = JSON.parse(localStorage.getItem('patients')) || [];
+        let editingRecordId = null;
+        let viewingRecord = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRecords();
+            loadPatientSelects();
+
+            // Set default date/time
+            const now = new Date();
+            document.getElementById('recordDate').valueAsDate = now;
+            document.getElementById('recordTime').value = now.toTimeString().slice(0, 5);
+
+            // Search listeners
+            document.getElementById('searchPatient').addEventListener('change', loadRecords);
+            document.getElementById('searchDate').addEventListener('change', loadRecords);
+
+            // Form submission
+            document.getElementById('recordForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveRecord();
+            });
+        });
+
+        function loadPatientSelects() {
+            patients = JSON.parse(localStorage.getItem('patients')) || [];
+
+            const selects = [
+                document.getElementById('patientSelect'),
+                document.getElementById('searchPatient')
+            ];
+
+            selects.forEach(select => {
+                const currentValue = select.value;
+                const isSearch = select.id === 'searchPatient';
+
+                select.innerHTML = (isSearch ? '<option value="">-- ทุกผู้ป่วย --</option>' : '<option value="">-- เลือกผู้ป่วย --</option>') +
+                    patients.map(p => `
+                        <option value="${p.id}">${p.hn} - ${p.firstName} ${p.lastName}</option>
+                    `).join('');
+
+                select.value = currentValue;
+            });
+        }
+
+        function updatePatientDetails() {
+            const patientId = document.getElementById('patientSelect').value;
+            const detailsDiv = document.getElementById('patientDetails');
+
+            if (!patientId) {
+                detailsDiv.innerHTML = '';
+                return;
+            }
+
+            const patient = patients.find(p => p.id === patientId);
+            if (patient) {
+                const age = calculateAge(patient.birthDate);
+                detailsDiv.innerHTML = `
+                    <div class="info-box">
+                        <strong>ข้อมูลผู้ป่วย:</strong><br>
+                        HN: ${patient.hn} | เพศ: ${patient.gender} | อายุ: ${age} ปี | โทร: ${patient.phone}<br>
+                        ${patient.chronicDiseases ? `โรคประจำตัว: ${patient.chronicDiseases}<br>` : ''}
+                        ${patient.allergies ? `<span class="alert-text">⚠️ แพ้ยา: ${patient.allergies}</span>` : ''}
+                    </div>
+                `;
+            }
+        }
+
+        function calculateAge(birthDate) {
+            const today = new Date();
+            const birth = new Date(birthDate);
+            let age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        function openAddRecordModal() {
+            editingRecordId = null;
+            document.getElementById('modalTitle').textContent = 'บันทึกการรักษาใหม่';
+            document.getElementById('recordForm').reset();
+
+            const now = new Date();
+            document.getElementById('recordDate').valueAsDate = now;
+            document.getElementById('recordTime').value = now.toTimeString().slice(0, 5);
+            document.getElementById('patientDetails').innerHTML = '';
+
+            document.getElementById('recordModal').style.display = 'block';
+        }
+
+        function openEditRecordModal(id) {
+            editingRecordId = id;
+            const record = records.find(r => r.id === id);
+
+            if (record) {
+                document.getElementById('modalTitle').textContent = 'แก้ไขเวชระเบียน';
+                document.getElementById('recordId').value = record.id;
+                document.getElementById('patientSelect').value = record.patientId;
+                updatePatientDetails();
+                document.getElementById('recordDate').value = record.date;
+                document.getElementById('recordTime').value = record.time;
+                document.getElementById('chiefComplaint').value = record.chiefComplaint;
+                document.getElementById('presentIllness').value = record.presentIllness || '';
+                document.getElementById('temperature').value = record.temperature || '';
+                document.getElementById('bloodPressure').value = record.bloodPressure || '';
+                document.getElementById('pulse').value = record.pulse || '';
+                document.getElementById('weight').value = record.weight || '';
+                document.getElementById('physicalExam').value = record.physicalExam || '';
+                document.getElementById('diagnosis').value = record.diagnosis;
+                document.getElementById('treatment').value = record.treatment || '';
+                document.getElementById('followUp').value = record.followUp || '';
+                document.getElementById('recordNotes').value = record.notes || '';
+
+                document.getElementById('recordModal').style.display = 'block';
+            }
+        }
+
+        function closeRecordModal() {
+            document.getElementById('recordModal').style.display = 'none';
+            document.getElementById('recordForm').reset();
+            document.getElementById('patientDetails').innerHTML = '';
+            editingRecordId = null;
+        }
+
+        function saveRecord() {
+            const patientId = document.getElementById('patientSelect').value;
+            const patient = patients.find(p => p.id === patientId);
+
+            if (!patient) {
+                alert('กรุณาเลือกผู้ป่วย');
+                return;
+            }
+
+            const record = {
+                id: editingRecordId || Date.now().toString(),
+                patientId: patientId,
+                patientName: `${patient.firstName} ${patient.lastName}`,
+                patientHN: patient.hn,
+                date: document.getElementById('recordDate').value,
+                time: document.getElementById('recordTime').value,
+                chiefComplaint: document.getElementById('chiefComplaint').value,
+                presentIllness: document.getElementById('presentIllness').value,
+                temperature: document.getElementById('temperature').value,
+                bloodPressure: document.getElementById('bloodPressure').value,
+                pulse: document.getElementById('pulse').value,
+                weight: document.getElementById('weight').value,
+                physicalExam: document.getElementById('physicalExam').value,
+                diagnosis: document.getElementById('diagnosis').value,
+                treatment: document.getElementById('treatment').value,
+                followUp: document.getElementById('followUp').value,
+                notes: document.getElementById('recordNotes').value,
+                createdAt: editingRecordId ?
+                    records.find(r => r.id === editingRecordId).createdAt :
+                    new Date().toISOString()
+            };
+
+            if (editingRecordId) {
+                const index = records.findIndex(r => r.id === editingRecordId);
+                records[index] = record;
+            } else {
+                records.push(record);
+            }
+
+            localStorage.setItem('medicalRecords', JSON.stringify(records));
+            loadRecords();
+            closeRecordModal();
+            showNotification('บันทึกเวชระเบียนสำเร็จ');
+        }
+
+        function deleteRecord(id) {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบเวชระเบียนนี้?')) {
+                records = records.filter(r => r.id !== id);
+                localStorage.setItem('medicalRecords', JSON.stringify(records));
+                loadRecords();
+                showNotification('ลบเวชระเบียนสำเร็จ');
+            }
+        }
+
+        function viewRecord(id) {
+            const record = records.find(r => r.id === id);
+            if (!record) return;
+
+            viewingRecord = record;
+            const patient = patients.find(p => p.id === record.patientId);
+
+            const content = `
+                <div class="record-detail">
+                    <h4>ข้อมูลผู้ป่วย</h4>
+                    <p><strong>HN:</strong> ${record.patientHN}</p>
+                    <p><strong>ชื่อ-นามสกุล:</strong> ${record.patientName}</p>
+                    ${patient ? `
+                        <p><strong>อายุ:</strong> ${calculateAge(patient.birthDate)} ปี | <strong>เพศ:</strong> ${patient.gender}</p>
+                        ${patient.allergies ? `<p class="alert-text"><strong>⚠️ แพ้ยา:</strong> ${patient.allergies}</p>` : ''}
+                    ` : ''}
+
+                    <hr>
+                    <h4>ข้อมูลการรักษา</h4>
+                    <p><strong>วันที่:</strong> ${formatDate(record.date)} <strong>เวลา:</strong> ${record.time}</p>
+
+                    <h5>อาการสำคัญ (Chief Complaint):</h5>
+                    <p>${record.chiefComplaint}</p>
+
+                    ${record.presentIllness ? `
+                        <h5>ประวัติปัจจุบัน (Present Illness):</h5>
+                        <p>${record.presentIllness}</p>
+                    ` : ''}
+
+                    <h5>สัญญาณชีพ (Vital Signs):</h5>
+                    <p>
+                        ${record.temperature ? `อุณหภูมิ: ${record.temperature} °C | ` : ''}
+                        ${record.bloodPressure ? `ความดัน: ${record.bloodPressure} mmHg | ` : ''}
+                        ${record.pulse ? `ชีพจร: ${record.pulse} ครั้ง/นาที | ` : ''}
+                        ${record.weight ? `น้ำหนัก: ${record.weight} กก.` : ''}
+                    </p>
+
+                    ${record.physicalExam ? `
+                        <h5>การตรวจร่างกาย (Physical Examination):</h5>
+                        <p>${record.physicalExam}</p>
+                    ` : ''}
+
+                    <h5>การวินิจฉัย (Diagnosis):</h5>
+                    <p><strong>${record.diagnosis}</strong></p>
+
+                    ${record.treatment ? `
+                        <h5>การรักษา (Treatment):</h5>
+                        <p>${record.treatment}</p>
+                    ` : ''}
+
+                    ${record.followUp ? `
+                        <h5>คำแนะนำและนัดหมายครั้งถัดไป:</h5>
+                        <p>${record.followUp}</p>
+                    ` : ''}
+
+                    ${record.notes ? `
+                        <h5>หมายเหตุ:</h5>
+                        <p>${record.notes}</p>
+                    ` : ''}
+                </div>
+            `;
+
+            document.getElementById('recordDetailContent').innerHTML = content;
+            document.getElementById('viewRecordModal').style.display = 'block';
+        }
+
+        function closeViewRecordModal() {
+            document.getElementById('viewRecordModal').style.display = 'none';
+            viewingRecord = null;
+        }
+
+        function printRecord() {
+            window.print();
+        }
+
+        function loadRecords() {
+            records = JSON.parse(localStorage.getItem('medicalRecords')) || [];
+
+            const searchPatientId = document.getElementById('searchPatient').value;
+            const searchDate = document.getElementById('searchDate').value;
+
+            let filtered = records;
+
+            if (searchPatientId) {
+                filtered = filtered.filter(r => r.patientId === searchPatientId);
+            }
+
+            if (searchDate) {
+                filtered = filtered.filter(r => r.date === searchDate);
+            }
+
+            // Sort by date and time (newest first)
+            filtered.sort((a, b) => {
+                const dateCompare = b.date.localeCompare(a.date);
+                if (dateCompare !== 0) return dateCompare;
+                return b.time.localeCompare(a.time);
+            });
+
+            displayRecords(filtered);
+        }
+
+        function displayRecords(recordList) {
+            const tbody = document.getElementById('recordTableBody');
+            document.getElementById('recordCount').textContent = `${recordList.length} รายการ`;
+
+            if (recordList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่มีข้อมูลเวชระเบียน</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = recordList.map(record => `
+                <tr>
+                    <td>${formatDate(record.date)}</td>
+                    <td>${record.time}</td>
+                    <td>${record.patientHN}</td>
+                    <td>${record.patientName}</td>
+                    <td>${record.chiefComplaint}</td>
+                    <td><strong>${record.diagnosis}</strong></td>
+                    <td>
+                        <button class="btn-icon" onclick="viewRecord('${record.id}')" title="ดูรายละเอียด">👁️</button>
+                        <button class="btn-icon" onclick="openEditRecordModal('${record.id}')" title="แก้ไข">✏️</button>
+                        <button class="btn-icon" onclick="deleteRecord('${record.id}')" title="ลบ">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function clearSearch() {
+            document.getElementById('searchPatient').value = '';
+            document.getElementById('searchDate').value = '';
+            loadRecords();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear() + 543;
+            return `${day}/${month}/${year}`;
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const recordModal = document.getElementById('recordModal');
+            const viewModal = document.getElementById('viewRecordModal');
+
+            if (event.target === recordModal) {
+                closeRecordModal();
+            }
+            if (event.target === viewModal) {
+                closeViewRecordModal();
+            }
+        }
+    </script>
+</body>
+</html>
