@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการคลินิก - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🏥 ระบบจัดการคลินิก</h1>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html" class="active">📊 Dashboard</a></li>
+            <li><a href="patients.html">👥 ผู้ป่วย</a></li>
+            <li><a href="appointments.html">📅 นัดหมาย</a></li>
+            <li><a href="records.html">📋 เวชระเบียน</a></li>
+            <li><a href="billing.html">💰 เงิน/ใบเสร็จ</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Dashboard</h2>
+            <p class="subtitle">ภาพรวมระบบจัดการคลินิก</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card stat-patients">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <h3 id="totalPatients">0</h3>
+                    <p>ผู้ป่วยทั้งหมด</p>
+                </div>
+            </div>
+
+            <div class="stat-card stat-appointments">
+                <div class="stat-icon">📅</div>
+                <div class="stat-info">
+                    <h3 id="todayAppointments">0</h3>
+                    <p>นัดหมายวันนี้</p>
+                </div>
+            </div>
+
+            <div class="stat-card stat-queue">
+                <div class="stat-icon">⏰</div>
+                <div class="stat-info">
+                    <h3 id="waitingQueue">0</h3>
+                    <p>คิวรอพบแพทย์</p>
+                </div>
+            </div>
+
+            <div class="stat-card stat-revenue">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <h3 id="todayRevenue">0</h3>
+                    <p>รายได้วันนี้ (บาท)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h3>🔔 คิวผู้ป่วยวันนี้</h3>
+                </div>
+                <div class="card-body">
+                    <div id="todayQueueList" class="queue-list">
+                        <p class="empty-state">ไม่มีคิวในขณะนี้</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>📅 นัดหมายที่จะมาถึง</h3>
+                </div>
+                <div class="card-body">
+                    <div id="upcomingAppointments" class="appointment-list">
+                        <p class="empty-state">ไม่มีนัดหมาย</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>📊 สถิติรายเดือน</h3>
+            </div>
+            <div class="card-body">
+                <div class="monthly-stats">
+                    <div class="monthly-stat-item">
+                        <span class="label">จำนวนผู้ป่วยใหม่:</span>
+                        <span class="value" id="monthlyNewPatients">0</span>
+                    </div>
+                    <div class="monthly-stat-item">
+                        <span class="label">จำนวนนัดหมาย:</span>
+                        <span class="value" id="monthlyAppointments">0</span>
+                    </div>
+                    <div class="monthly-stat-item">
+                        <span class="label">รายได้รวม:</span>
+                        <span class="value" id="monthlyRevenue">0</span>
+                        <span> บาท</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Load dashboard data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboard();
+        });
+
+        function loadDashboard() {
+            const patients = JSON.parse(localStorage.getItem('patients')) || [];
+            const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+            const billings = JSON.parse(localStorage.getItem('billings')) || [];
+
+            // Total patients
+            document.getElementById('totalPatients').textContent = patients.length;
+
+            // Today's date
+            const today = new Date().toISOString().split('T')[0];
+
+            // Today's appointments
+            const todayAppts = appointments.filter(apt => apt.date === today);
+            document.getElementById('todayAppointments').textContent = todayAppts.length;
+
+            // Waiting queue
+            const waitingQueue = todayAppts.filter(apt => apt.status === 'รอพบแพทย์');
+            document.getElementById('waitingQueue').textContent = waitingQueue.length;
+
+            // Today's revenue
+            const todayBillings = billings.filter(bill => bill.date === today);
+            const todayRevenue = todayBillings.reduce((sum, bill) => sum + parseFloat(bill.total || 0), 0);
+            document.getElementById('todayRevenue').textContent = todayRevenue.toLocaleString();
+
+            // Display today's queue
+            displayTodayQueue(waitingQueue);
+
+            // Display upcoming appointments
+            displayUpcomingAppointments(appointments);
+
+            // Monthly stats
+            const currentMonth = new Date().toISOString().substring(0, 7);
+            const monthlyPatients = patients.filter(p => p.registeredDate && p.registeredDate.startsWith(currentMonth));
+            const monthlyAppts = appointments.filter(a => a.date && a.date.startsWith(currentMonth));
+            const monthlyBills = billings.filter(b => b.date && b.date.startsWith(currentMonth));
+            const monthlyRev = monthlyBills.reduce((sum, bill) => sum + parseFloat(bill.total || 0), 0);
+
+            document.getElementById('monthlyNewPatients').textContent = monthlyPatients.length;
+            document.getElementById('monthlyAppointments').textContent = monthlyAppts.length;
+            document.getElementById('monthlyRevenue').textContent = monthlyRev.toLocaleString();
+        }
+
+        function displayTodayQueue(queue) {
+            const container = document.getElementById('todayQueueList');
+
+            if (queue.length === 0) {
+                container.innerHTML = '<p class="empty-state">ไม่มีคิวในขณะนี้</p>';
+                return;
+            }
+
+            container.innerHTML = queue.map(apt => `
+                <div class="queue-item">
+                    <div class="queue-number">Q${apt.queueNumber || '-'}</div>
+                    <div class="queue-info">
+                        <strong>${apt.patientName}</strong>
+                        <span class="time">${apt.time || '-'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayUpcomingAppointments(appointments) {
+            const container = document.getElementById('upcomingAppointments');
+            const today = new Date().toISOString().split('T')[0];
+
+            const upcoming = appointments
+                .filter(apt => apt.date > today)
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .slice(0, 5);
+
+            if (upcoming.length === 0) {
+                container.innerHTML = '<p class="empty-state">ไม่มีนัดหมาย</p>';
+                return;
+            }
+
+            container.innerHTML = upcoming.map(apt => `
+                <div class="appointment-item">
+                    <div class="appointment-date">${formatDate(apt.date)}</div>
+                    <div class="appointment-info">
+                        <strong>${apt.patientName}</strong>
+                        <span class="time">${apt.time || '-'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                              'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            return `${date.getDate()} ${thaiMonths[date.getMonth()]}`;
+        }
+    </script>
+</body>
+</html>

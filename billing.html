@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เงินและใบเสร็จ - ระบบจัดการคลินิก</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🏥 ระบบจัดการคลินิก</h1>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html">📊 Dashboard</a></li>
+            <li><a href="patients.html">👥 ผู้ป่วย</a></li>
+            <li><a href="appointments.html">📅 นัดหมาย</a></li>
+            <li><a href="records.html">📋 เวชระเบียน</a></li>
+            <li><a href="billing.html" class="active">💰 เงิน/ใบเสร็จ</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>💰 จัดการเงินและใบเสร็จ</h2>
+            <button class="btn btn-primary" onclick="openAddBillingModal()">+ สร้างใบเสร็จใหม่</button>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-label">รายได้วันนี้</div>
+                <div class="stat-value" id="todayIncome">0 ฿</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">รายได้เดือนนี้</div>
+                <div class="stat-value" id="monthlyIncome">0 ฿</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">จำนวนใบเสร็จวันนี้</div>
+                <div class="stat-value" id="todayBillCount">0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>ค้นหาใบเสร็จ</h3>
+            </div>
+            <div class="card-body">
+                <div class="search-bar">
+                    <input type="text" id="searchBill" class="form-input" placeholder="ค้นหาด้วยเลขใบเสร็จ, HN, ชื่อผู้ป่วย...">
+                    <input type="date" id="searchDate" class="form-input">
+                    <button class="btn btn-secondary" onclick="clearSearch()">ล้าง</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>รายการใบเสร็จ</h3>
+                <span class="badge" id="billCount">0 รายการ</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>เลขที่ใบเสร็จ</th>
+                                <th>วันที่</th>
+                                <th>HN</th>
+                                <th>ชื่อผู้ป่วย</th>
+                                <th>รายการ</th>
+                                <th>ยอดรวม</th>
+                                <th>สถานะ</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="billTableBody">
+                            <tr>
+                                <td colspan="8" class="empty-state">ไม่มีข้อมูลใบเสร็จ</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Billing Modal -->
+    <div id="billingModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="modalTitle">สร้างใบเสร็จใหม่</h3>
+                <span class="close" onclick="closeBillingModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="billingForm">
+                    <input type="hidden" id="billingId">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>เลขที่ใบเสร็จ</label>
+                            <input type="text" id="receiptNumber" class="form-input" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>วันที่ <span class="required">*</span></label>
+                            <input type="date" id="billDate" class="form-input" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>เลือกผู้ป่วย <span class="required">*</span></label>
+                        <select id="patientSelect" class="form-input" required onchange="updateBillPatientInfo()">
+                            <option value="">-- เลือกผู้ป่วย --</option>
+                        </select>
+                        <div id="billPatientInfo" class="patient-info"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <h4>รายการค่าใช้จ่าย</h4>
+                        <div id="billItems">
+                            <!-- Items will be added here -->
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addBillItem()">+ เพิ่มรายการ</button>
+                    </div>
+
+                    <div class="bill-summary">
+                        <div class="summary-row">
+                            <span>รวมเป็นเงิน:</span>
+                            <span id="subtotal">0.00</span>
+                            <span>บาท</span>
+                        </div>
+                        <div class="summary-row">
+                            <label>
+                                ส่วนลด:
+                                <input type="number" id="discount" class="form-input-sm" value="0" min="0" step="0.01" onchange="calculateTotal()">
+                            </label>
+                            <span id="discountAmount">0.00</span>
+                            <span>บาท</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <strong>ยอดรวมสุทธิ:</strong>
+                            <strong id="totalAmount">0.00</strong>
+                            <strong>บาท</strong>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>สถานะการชำระเงิน</label>
+                        <select id="paymentStatus" class="form-input">
+                            <option value="ชำระแล้ว">ชำระแล้ว</option>
+                            <option value="ยังไม่ชำระ">ยังไม่ชำระ</option>
+                            <option value="ชำระบางส่วน">ชำระบางส่วน</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>วิธีการชำระเงิน</label>
+                        <select id="paymentMethod" class="form-input">
+                            <option value="เงินสด">เงินสด</option>
+                            <option value="โอน">โอน</option>
+                            <option value="บัตรเครดิต">บัตรเครดิต</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หมายเหตุ</label>
+                        <textarea id="billNotes" class="form-input" rows="2"></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeBillingModal()">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Receipt Modal -->
+    <div id="viewReceiptModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>ใบเสร็จรับเงิน</h3>
+                <span class="close" onclick="closeViewReceiptModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="receiptContent" class="receipt-print"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeViewReceiptModal()">ปิด</button>
+                    <button type="button" class="btn btn-primary" onclick="printReceipt()">🖨️ พิมพ์</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let billings = JSON.parse(localStorage.getItem('billings')) || [];
+        let patients = JSON.parse(localStorage.getItem('patients')) || [];
+        let editingBillingId = null;
+        let billItemCounter = 0;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBillings();
+            loadPatientSelect();
+            updateStats();
+
+            document.getElementById('billDate').valueAsDate = new Date();
+
+            // Search listeners
+            document.getElementById('searchBill').addEventListener('input', loadBillings);
+            document.getElementById('searchDate').addEventListener('change', loadBillings);
+
+            // Form submission
+            document.getElementById('billingForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveBilling();
+            });
+        });
+
+        function loadPatientSelect() {
+            patients = JSON.parse(localStorage.getItem('patients')) || [];
+            const select = document.getElementById('patientSelect');
+
+            select.innerHTML = '<option value="">-- เลือกผู้ป่วย --</option>' +
+                patients.map(p => `
+                    <option value="${p.id}">${p.hn} - ${p.firstName} ${p.lastName}</option>
+                `).join('');
+        }
+
+        function updateBillPatientInfo() {
+            const patientId = document.getElementById('patientSelect').value;
+            const infoDiv = document.getElementById('billPatientInfo');
+
+            if (!patientId) {
+                infoDiv.innerHTML = '';
+                return;
+            }
+
+            const patient = patients.find(p => p.id === patientId);
+            if (patient) {
+                infoDiv.innerHTML = `
+                    <div class="info-box">
+                        <strong>HN:</strong> ${patient.hn} |
+                        <strong>ชื่อ:</strong> ${patient.firstName} ${patient.lastName} |
+                        <strong>โทร:</strong> ${patient.phone}
+                    </div>
+                `;
+            }
+        }
+
+        function generateReceiptNumber() {
+            const prefix = 'RC';
+            const date = new Date();
+            const dateStr = date.getFullYear().toString() +
+                          (date.getMonth() + 1).toString().padStart(2, '0') +
+                          date.getDate().toString().padStart(2, '0');
+            const count = billings.filter(b => b.receiptNumber && b.receiptNumber.includes(dateStr)).length + 1;
+            return `${prefix}${dateStr}${count.toString().padStart(3, '0')}`;
+        }
+
+        function addBillItem() {
+            billItemCounter++;
+            const container = document.getElementById('billItems');
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'bill-item';
+            itemDiv.id = `item-${billItemCounter}`;
+            itemDiv.innerHTML = `
+                <div class="bill-item-row">
+                    <input type="text" class="form-input" placeholder="รายการ" data-item-id="${billItemCounter}" data-field="description" onchange="calculateTotal()">
+                    <input type="number" class="form-input-sm" placeholder="จำนวน" value="1" min="1" data-item-id="${billItemCounter}" data-field="quantity" onchange="calculateTotal()">
+                    <input type="number" class="form-input" placeholder="ราคา/หน่วย" value="0" min="0" step="0.01" data-item-id="${billItemCounter}" data-field="price" onchange="calculateTotal()">
+                    <span class="item-total">0.00</span>
+                    <button type="button" class="btn-icon" onclick="removeBillItem(${billItemCounter})" title="ลบ">🗑️</button>
+                </div>
+            `;
+            container.appendChild(itemDiv);
+        }
+
+        function removeBillItem(itemId) {
+            const item = document.getElementById(`item-${itemId}`);
+            if (item) {
+                item.remove();
+                calculateTotal();
+            }
+        }
+
+        function calculateTotal() {
+            const items = document.querySelectorAll('.bill-item-row');
+            let subtotal = 0;
+
+            items.forEach(item => {
+                const quantity = parseFloat(item.querySelector('[data-field="quantity"]').value) || 0;
+                const price = parseFloat(item.querySelector('[data-field="price"]').value) || 0;
+                const itemTotal = quantity * price;
+
+                const totalSpan = item.querySelector('.item-total');
+                if (totalSpan) {
+                    totalSpan.textContent = itemTotal.toFixed(2);
+                }
+
+                subtotal += itemTotal;
+            });
+
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            const total = Math.max(0, subtotal - discount);
+
+            document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+            document.getElementById('discountAmount').textContent = discount.toFixed(2);
+            document.getElementById('totalAmount').textContent = total.toFixed(2);
+        }
+
+        function openAddBillingModal() {
+            editingBillingId = null;
+            document.getElementById('modalTitle').textContent = 'สร้างใบเสร็จใหม่';
+            document.getElementById('billingForm').reset();
+            document.getElementById('receiptNumber').value = generateReceiptNumber();
+            document.getElementById('billDate').valueAsDate = new Date();
+            document.getElementById('paymentStatus').value = 'ชำระแล้ว';
+            document.getElementById('paymentMethod').value = 'เงินสด';
+            document.getElementById('billItems').innerHTML = '';
+            document.getElementById('billPatientInfo').innerHTML = '';
+            billItemCounter = 0;
+
+            // Add one default item
+            addBillItem();
+
+            document.getElementById('billingModal').style.display = 'block';
+        }
+
+        function closeBillingModal() {
+            document.getElementById('billingModal').style.display = 'none';
+            document.getElementById('billingForm').reset();
+            document.getElementById('billItems').innerHTML = '';
+            document.getElementById('billPatientInfo').innerHTML = '';
+            editingBillingId = null;
+            billItemCounter = 0;
+        }
+
+        function saveBilling() {
+            const patientId = document.getElementById('patientSelect').value;
+            const patient = patients.find(p => p.id === patientId);
+
+            if (!patient) {
+                alert('กรุณาเลือกผู้ป่วย');
+                return;
+            }
+
+            // Collect bill items
+            const itemElements = document.querySelectorAll('.bill-item-row');
+            const items = [];
+
+            itemElements.forEach(item => {
+                const description = item.querySelector('[data-field="description"]').value;
+                const quantity = parseFloat(item.querySelector('[data-field="quantity"]').value) || 0;
+                const price = parseFloat(item.querySelector('[data-field="price"]').value) || 0;
+
+                if (description && quantity > 0) {
+                    items.push({
+                        description: description,
+                        quantity: quantity,
+                        price: price,
+                        total: quantity * price
+                    });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('กรุณาเพิ่มรายการค่าใช้จ่ายอย่างน้อย 1 รายการ');
+                return;
+            }
+
+            const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            const total = Math.max(0, subtotal - discount);
+
+            const billing = {
+                id: editingBillingId || Date.now().toString(),
+                receiptNumber: document.getElementById('receiptNumber').value,
+                date: document.getElementById('billDate').value,
+                patientId: patientId,
+                patientName: `${patient.firstName} ${patient.lastName}`,
+                patientHN: patient.hn,
+                items: items,
+                subtotal: subtotal,
+                discount: discount,
+                total: total,
+                paymentStatus: document.getElementById('paymentStatus').value,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                notes: document.getElementById('billNotes').value,
+                createdAt: editingBillingId ?
+                    billings.find(b => b.id === editingBillingId).createdAt :
+                    new Date().toISOString()
+            };
+
+            if (editingBillingId) {
+                const index = billings.findIndex(b => b.id === editingBillingId);
+                billings[index] = billing;
+            } else {
+                billings.push(billing);
+            }
+
+            localStorage.setItem('billings', JSON.stringify(billings));
+            loadBillings();
+            updateStats();
+            closeBillingModal();
+            showNotification('บันทึกใบเสร็จสำเร็จ');
+        }
+
+        function deleteBilling(id) {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบใบเสร็จนี้?')) {
+                billings = billings.filter(b => b.id !== id);
+                localStorage.setItem('billings', JSON.stringify(billings));
+                loadBillings();
+                updateStats();
+                showNotification('ลบใบเสร็จสำเร็จ');
+            }
+        }
+
+        function viewReceipt(id) {
+            const billing = billings.find(b => b.id === id);
+            if (!billing) return;
+
+            const content = `
+                <div class="receipt">
+                    <div class="receipt-header">
+                        <h2>ใบเสร็จรับเงิน</h2>
+                        <p>Receipt</p>
+                    </div>
+
+                    <div class="receipt-info">
+                        <div class="receipt-row">
+                            <span>เลขที่ใบเสร็จ:</span>
+                            <strong>${billing.receiptNumber}</strong>
+                        </div>
+                        <div class="receipt-row">
+                            <span>วันที่:</span>
+                            <span>${formatDate(billing.date)}</span>
+                        </div>
+                    </div>
+
+                    <div class="receipt-patient">
+                        <div class="receipt-row">
+                            <span>HN:</span>
+                            <span>${billing.patientHN}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span>ชื่อผู้ป่วย:</span>
+                            <span>${billing.patientName}</span>
+                        </div>
+                    </div>
+
+                    <table class="receipt-table">
+                        <thead>
+                            <tr>
+                                <th>รายการ</th>
+                                <th>จำนวน</th>
+                                <th>ราคา/หน่วย</th>
+                                <th>รวม</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${billing.items.map(item => `
+                                <tr>
+                                    <td>${item.description}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${item.price.toFixed(2)}</td>
+                                    <td>${item.total.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="receipt-summary">
+                        <div class="receipt-row">
+                            <span>รวมเป็นเงิน:</span>
+                            <span>${billing.subtotal.toFixed(2)} บาท</span>
+                        </div>
+                        ${billing.discount > 0 ? `
+                            <div class="receipt-row">
+                                <span>ส่วนลด:</span>
+                                <span>${billing.discount.toFixed(2)} บาท</span>
+                            </div>
+                        ` : ''}
+                        <div class="receipt-row total">
+                            <strong>ยอดรวมสุทธิ:</strong>
+                            <strong>${billing.total.toFixed(2)} บาท</strong>
+                        </div>
+                    </div>
+
+                    <div class="receipt-payment">
+                        <div class="receipt-row">
+                            <span>วิธีการชำระเงิน:</span>
+                            <span>${billing.paymentMethod}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span>สถานะ:</span>
+                            <span class="status-${billing.paymentStatus.replace(/\s/g, '')}">${billing.paymentStatus}</span>
+                        </div>
+                    </div>
+
+                    ${billing.notes ? `
+                        <div class="receipt-notes">
+                            <strong>หมายเหตุ:</strong> ${billing.notes}
+                        </div>
+                    ` : ''}
+
+                    <div class="receipt-footer">
+                        <p>ขอบคุณที่ใช้บริการ</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('receiptContent').innerHTML = content;
+            document.getElementById('viewReceiptModal').style.display = 'block';
+        }
+
+        function closeViewReceiptModal() {
+            document.getElementById('viewReceiptModal').style.display = 'none';
+        }
+
+        function printReceipt() {
+            window.print();
+        }
+
+        function updateStats() {
+            billings = JSON.parse(localStorage.getItem('billings')) || [];
+
+            const today = new Date().toISOString().split('T')[0];
+            const currentMonth = new Date().toISOString().substring(0, 7);
+
+            // Today's income and count
+            const todayBills = billings.filter(b => b.date === today && b.paymentStatus === 'ชำระแล้ว');
+            const todayIncome = todayBills.reduce((sum, b) => sum + parseFloat(b.total || 0), 0);
+
+            document.getElementById('todayIncome').textContent = todayIncome.toLocaleString() + ' ฿';
+            document.getElementById('todayBillCount').textContent = todayBills.length;
+
+            // Monthly income
+            const monthlyBills = billings.filter(b =>
+                b.date && b.date.startsWith(currentMonth) && b.paymentStatus === 'ชำระแล้ว'
+            );
+            const monthlyIncome = monthlyBills.reduce((sum, b) => sum + parseFloat(b.total || 0), 0);
+
+            document.getElementById('monthlyIncome').textContent = monthlyIncome.toLocaleString() + ' ฿';
+        }
+
+        function loadBillings() {
+            billings = JSON.parse(localStorage.getItem('billings')) || [];
+
+            const searchTerm = document.getElementById('searchBill').value.toLowerCase();
+            const searchDate = document.getElementById('searchDate').value;
+
+            let filtered = billings;
+
+            if (searchTerm) {
+                filtered = filtered.filter(b =>
+                    b.receiptNumber.toLowerCase().includes(searchTerm) ||
+                    b.patientHN.toLowerCase().includes(searchTerm) ||
+                    b.patientName.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (searchDate) {
+                filtered = filtered.filter(b => b.date === searchDate);
+            }
+
+            // Sort by date (newest first)
+            filtered.sort((a, b) => b.date.localeCompare(a.date));
+
+            displayBillings(filtered);
+        }
+
+        function displayBillings(billingList) {
+            const tbody = document.getElementById('billTableBody');
+            document.getElementById('billCount').textContent = `${billingList.length} รายการ`;
+
+            if (billingList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูลใบเสร็จ</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = billingList.map(bill => {
+                const itemsSummary = bill.items.length > 0 ?
+                    bill.items.map(i => i.description).join(', ') :
+                    '-';
+
+                return `
+                    <tr>
+                        <td><strong>${bill.receiptNumber}</strong></td>
+                        <td>${formatDate(bill.date)}</td>
+                        <td>${bill.patientHN}</td>
+                        <td>${bill.patientName}</td>
+                        <td>${itemsSummary.substring(0, 30)}${itemsSummary.length > 30 ? '...' : ''}</td>
+                        <td><strong>${bill.total.toLocaleString()} ฿</strong></td>
+                        <td><span class="status-badge status-${bill.paymentStatus.replace(/\s/g, '')}">${bill.paymentStatus}</span></td>
+                        <td>
+                            <button class="btn-icon" onclick="viewReceipt('${bill.id}')" title="ดูใบเสร็จ">👁️</button>
+                            <button class="btn-icon" onclick="deleteBilling('${bill.id}')" title="ลบ">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function clearSearch() {
+            document.getElementById('searchBill').value = '';
+            document.getElementById('searchDate').value = '';
+            loadBillings();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear() + 543;
+            return `${day}/${month}/${year}`;
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const billingModal = document.getElementById('billingModal');
+            const receiptModal = document.getElementById('viewReceiptModal');
+
+            if (event.target === billingModal) {
+                closeBillingModal();
+            }
+            if (event.target === receiptModal) {
+                closeViewReceiptModal();
+            }
+        }
+    </script>
+</body>
+</html>

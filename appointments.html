@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>นัดหมายและคิว - ระบบจัดการคลินิก</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🏥 ระบบจัดการคลินิก</h1>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html">📊 Dashboard</a></li>
+            <li><a href="patients.html">👥 ผู้ป่วย</a></li>
+            <li><a href="appointments.html" class="active">📅 นัดหมาย</a></li>
+            <li><a href="records.html">📋 เวชระเบียน</a></li>
+            <li><a href="billing.html">💰 เงิน/ใบเสร็จ</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>📅 จัดการนัดหมายและคิว</h2>
+            <button class="btn btn-primary" onclick="openAddAppointmentModal()">+ สร้างนัดหมายใหม่</button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>⏰ คิววันนี้</h3>
+                <span class="badge" id="todayQueueCount">0 คิว</span>
+            </div>
+            <div class="card-body">
+                <div id="todayQueueContainer" class="queue-container">
+                    <p class="empty-state">ไม่มีคิววันนี้</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>📅 ตารางนัดหมาย</h3>
+            </div>
+            <div class="card-body">
+                <div class="filter-bar">
+                    <input type="date" id="filterDate" class="form-input">
+                    <select id="filterStatus" class="form-input">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="รอพบแพทย์">รอพบแพทย์</option>
+                        <option value="กำลังพบแพทย์">กำลังพบแพทย์</option>
+                        <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                        <option value="ยกเลิก">ยกเลิก</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="clearFilters()">ล้างตัวกรอง</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>คิว</th>
+                                <th>วันที่</th>
+                                <th>เวลา</th>
+                                <th>HN</th>
+                                <th>ชื่อผู้ป่วย</th>
+                                <th>สถานะ</th>
+                                <th>หมายเหตุ</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appointmentTableBody">
+                            <tr>
+                                <td colspan="8" class="empty-state">ไม่มีข้อมูลนัดหมาย</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Appointment Modal -->
+    <div id="appointmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">สร้างนัดหมายใหม่</h3>
+                <span class="close" onclick="closeAppointmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="appointmentForm">
+                    <input type="hidden" id="appointmentId">
+
+                    <div class="form-group">
+                        <label>เลือกผู้ป่วย <span class="required">*</span></label>
+                        <select id="patientSelect" class="form-input" required onchange="updatePatientInfo()">
+                            <option value="">-- เลือกผู้ป่วย --</option>
+                        </select>
+                        <div id="patientInfo" class="patient-info"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>วันที่นัด <span class="required">*</span></label>
+                            <input type="date" id="appointmentDate" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label>เวลา <span class="required">*</span></label>
+                            <input type="time" id="appointmentTime" class="form-input" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หมายเลขคิว</label>
+                        <input type="text" id="queueNumber" class="form-input" placeholder="จะสร้างอัตโนมัติถ้าไม่ระบุ">
+                    </div>
+
+                    <div class="form-group">
+                        <label>สถานะ</label>
+                        <select id="appointmentStatus" class="form-input">
+                            <option value="รอพบแพทย์">รอพบแพทย์</option>
+                            <option value="กำลังพบแพทย์">กำลังพบแพทย์</option>
+                            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                            <option value="ยกเลิก">ยกเลิก</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หมายเหตุ</label>
+                        <textarea id="appointmentNotes" class="form-input" rows="3"></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeAppointmentModal()">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        let patients = JSON.parse(localStorage.getItem('patients')) || [];
+        let editingAppointmentId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAppointments();
+            loadPatientSelect();
+
+            // Set default date to today
+            document.getElementById('filterDate').valueAsDate = new Date();
+
+            // Filter listeners
+            document.getElementById('filterDate').addEventListener('change', loadAppointments);
+            document.getElementById('filterStatus').addEventListener('change', loadAppointments);
+
+            // Form submission
+            document.getElementById('appointmentForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveAppointment();
+            });
+        });
+
+        function loadPatientSelect() {
+            patients = JSON.parse(localStorage.getItem('patients')) || [];
+            const select = document.getElementById('patientSelect');
+
+            select.innerHTML = '<option value="">-- เลือกผู้ป่วย --</option>' +
+                patients.map(p => `
+                    <option value="${p.id}">${p.hn} - ${p.firstName} ${p.lastName}</option>
+                `).join('');
+        }
+
+        function updatePatientInfo() {
+            const patientId = document.getElementById('patientSelect').value;
+            const infoDiv = document.getElementById('patientInfo');
+
+            if (!patientId) {
+                infoDiv.innerHTML = '';
+                return;
+            }
+
+            const patient = patients.find(p => p.id === patientId);
+            if (patient) {
+                const age = calculateAge(patient.birthDate);
+                infoDiv.innerHTML = `
+                    <div class="info-box">
+                        <strong>ข้อมูลผู้ป่วย:</strong><br>
+                        เพศ: ${patient.gender} | อายุ: ${age} ปี | โทร: ${patient.phone}<br>
+                        ${patient.allergies ? `<span class="alert-text">⚠️ แพ้ยา: ${patient.allergies}</span>` : ''}
+                    </div>
+                `;
+            }
+        }
+
+        function calculateAge(birthDate) {
+            const today = new Date();
+            const birth = new Date(birthDate);
+            let age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        function generateQueueNumber(date) {
+            const dateAppts = appointments.filter(a => a.date === date);
+            return (dateAppts.length + 1).toString().padStart(3, '0');
+        }
+
+        function openAddAppointmentModal() {
+            editingAppointmentId = null;
+            document.getElementById('modalTitle').textContent = 'สร้างนัดหมายใหม่';
+            document.getElementById('appointmentForm').reset();
+            document.getElementById('appointmentDate').valueAsDate = new Date();
+            document.getElementById('appointmentStatus').value = 'รอพบแพทย์';
+            document.getElementById('patientInfo').innerHTML = '';
+            document.getElementById('appointmentModal').style.display = 'block';
+        }
+
+        function openEditAppointmentModal(id) {
+            editingAppointmentId = id;
+            const appointment = appointments.find(a => a.id === id);
+
+            if (appointment) {
+                document.getElementById('modalTitle').textContent = 'แก้ไขนัดหมาย';
+                document.getElementById('appointmentId').value = appointment.id;
+                document.getElementById('patientSelect').value = appointment.patientId;
+                updatePatientInfo();
+                document.getElementById('appointmentDate').value = appointment.date;
+                document.getElementById('appointmentTime').value = appointment.time;
+                document.getElementById('queueNumber').value = appointment.queueNumber || '';
+                document.getElementById('appointmentStatus').value = appointment.status;
+                document.getElementById('appointmentNotes').value = appointment.notes || '';
+
+                document.getElementById('appointmentModal').style.display = 'block';
+            }
+        }
+
+        function closeAppointmentModal() {
+            document.getElementById('appointmentModal').style.display = 'none';
+            document.getElementById('appointmentForm').reset();
+            document.getElementById('patientInfo').innerHTML = '';
+            editingAppointmentId = null;
+        }
+
+        function saveAppointment() {
+            const patientId = document.getElementById('patientSelect').value;
+            const patient = patients.find(p => p.id === patientId);
+
+            if (!patient) {
+                alert('กรุณาเลือกผู้ป่วย');
+                return;
+            }
+
+            const date = document.getElementById('appointmentDate').value;
+            let queueNumber = document.getElementById('queueNumber').value;
+
+            if (!queueNumber) {
+                queueNumber = generateQueueNumber(date);
+            }
+
+            const appointment = {
+                id: editingAppointmentId || Date.now().toString(),
+                patientId: patientId,
+                patientName: `${patient.firstName} ${patient.lastName}`,
+                patientHN: patient.hn,
+                date: date,
+                time: document.getElementById('appointmentTime').value,
+                queueNumber: queueNumber,
+                status: document.getElementById('appointmentStatus').value,
+                notes: document.getElementById('appointmentNotes').value,
+                createdAt: editingAppointmentId ?
+                    appointments.find(a => a.id === editingAppointmentId).createdAt :
+                    new Date().toISOString()
+            };
+
+            if (editingAppointmentId) {
+                const index = appointments.findIndex(a => a.id === editingAppointmentId);
+                appointments[index] = appointment;
+            } else {
+                appointments.push(appointment);
+            }
+
+            localStorage.setItem('appointments', JSON.stringify(appointments));
+            loadAppointments();
+            closeAppointmentModal();
+            showNotification('บันทึกนัดหมายสำเร็จ');
+        }
+
+        function deleteAppointment(id) {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบนัดหมายนี้?')) {
+                appointments = appointments.filter(a => a.id !== id);
+                localStorage.setItem('appointments', JSON.stringify(appointments));
+                loadAppointments();
+                showNotification('ลบนัดหมายสำเร็จ');
+            }
+        }
+
+        function updateStatus(id, newStatus) {
+            const appointment = appointments.find(a => a.id === id);
+            if (appointment) {
+                appointment.status = newStatus;
+                localStorage.setItem('appointments', JSON.stringify(appointments));
+                loadAppointments();
+                showNotification('อัพเดทสถานะสำเร็จ');
+            }
+        }
+
+        function loadAppointments() {
+            appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+
+            const filterDate = document.getElementById('filterDate').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+
+            let filtered = appointments;
+
+            if (filterDate) {
+                filtered = filtered.filter(a => a.date === filterDate);
+            }
+
+            if (filterStatus) {
+                filtered = filtered.filter(a => a.status === filterStatus);
+            }
+
+            // Sort by date and time
+            filtered.sort((a, b) => {
+                const dateCompare = a.date.localeCompare(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                return a.time.localeCompare(b.time);
+            });
+
+            displayAppointments(filtered);
+            displayTodayQueue();
+        }
+
+        function displayTodayQueue() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayQueue = appointments.filter(a => a.date === today && a.status === 'รอพบแพทย์');
+
+            document.getElementById('todayQueueCount').textContent = `${todayQueue.length} คิว`;
+            const container = document.getElementById('todayQueueContainer');
+
+            if (todayQueue.length === 0) {
+                container.innerHTML = '<p class="empty-state">ไม่มีคิววันนี้</p>';
+                return;
+            }
+
+            container.innerHTML = todayQueue.map(apt => `
+                <div class="queue-card">
+                    <div class="queue-num">Q${apt.queueNumber}</div>
+                    <div class="queue-details">
+                        <div class="queue-patient-name">${apt.patientName}</div>
+                        <div class="queue-hn">HN: ${apt.patientHN}</div>
+                        <div class="queue-time">⏰ ${apt.time}</div>
+                    </div>
+                    <div class="queue-actions">
+                        <button class="btn btn-sm btn-success" onclick="updateStatus('${apt.id}', 'กำลังพบแพทย์')">เรียกคิว</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayAppointments(appointmentList) {
+            const tbody = document.getElementById('appointmentTableBody');
+
+            if (appointmentList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูลนัดหมาย</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = appointmentList.map(apt => `
+                <tr>
+                    <td><strong>Q${apt.queueNumber}</strong></td>
+                    <td>${formatDate(apt.date)}</td>
+                    <td>${apt.time}</td>
+                    <td>${apt.patientHN}</td>
+                    <td>${apt.patientName}</td>
+                    <td><span class="status-badge status-${apt.status.replace(/\s/g, '')}">${apt.status}</span></td>
+                    <td>${apt.notes || '-'}</td>
+                    <td>
+                        <button class="btn-icon" onclick="openEditAppointmentModal('${apt.id}')" title="แก้ไข">✏️</button>
+                        <button class="btn-icon" onclick="deleteAppointment('${apt.id}')" title="ลบ">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function clearFilters() {
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterStatus').value = '';
+            loadAppointments();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear() + 543;
+            return `${day}/${month}/${year}`;
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('appointmentModal');
+            if (event.target === modal) {
+                closeAppointmentModal();
+            }
+        }
+    </script>
+</body>
+</html>
